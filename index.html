@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TUS Anki">
+<meta name="theme-color" content="#0f0f0f">
+<link rel="manifest" href="manifest.json">
+<title>TUS Anki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #0f0f0f;
+  --bg2: #171717;
+  --bg3: #1f1f1f;
+  --bg4: #282828;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f0ece4;
+  --text2: #9e9a93;
+  --text3: #5c5955;
+  --red: #c9372c;
+  --red-light: #e8524a;
+  --red-bg: rgba(201,55,44,0.12);
+  --amber: #d97c1a;
+  --amber-bg: rgba(217,124,26,0.12);
+  --green: #2d9b5a;
+  --green-bg: rgba(45,155,90,0.12);
+  --blue: #2e72c2;
+  --blue-bg: rgba(46,114,194,0.12);
+  --serif: 'DM Serif Display', Georgia, serif;
+  --sans: 'Outfit', system-ui, sans-serif;
+  --mono: 'DM Mono', monospace;
+  --r: 12px;
+  --r-lg: 18px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overscroll-behavior: none; }
+
+/* LAYOUT */
+#app { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+.screen { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: calc(64px + var(--safe-bot)); display: none; }
+.screen.active { display: block; }
+
+/* NAV */
+nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: calc(64px + var(--safe-bot));
+  padding-bottom: var(--safe-bot);
+  background: rgba(15,15,15,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 0.5px solid var(--border);
+  display: flex; align-items: flex-start; justify-content: space-around;
+  z-index: 100;
+}
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding-top: 10px; cursor: pointer; border: none; background: none; color: var(--text3); font-family: var(--sans); transition: color 0.15s; }
+.nav-btn.active { color: var(--red-light); }
+.nav-icon { font-size: 22px; line-height: 1; }
+.nav-label { font-size: 10px; letter-spacing: 0.3px; font-weight: 500; }
+
+/* HEADER */
+.page-header {
+  padding: calc(var(--safe-top) + 20px) 20px 0;
+  margin-bottom: 24px;
+}
+.page-title { font-family: var(--serif); font-size: 30px; letter-spacing: -0.5px; color: var(--text); line-height: 1.1; }
+.page-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+/* CARDS / SURFACES */
+.card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r-lg); padding: 16px; }
+.card + .card { margin-top: 10px; }
+
+/* STATS GRID */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 20px; margin-bottom: 20px; }
+.stat-box { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r-lg); padding: 16px; }
+.stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; font-weight: 500; }
+.stat-num { font-family: var(--mono); font-size: 28px; font-weight: 500; line-height: 1; }
+.stat-num.r { color: var(--red-light); }
+.stat-num.g { color: var(--green); }
+.stat-num.a { color: var(--amber); }
+
+/* DECK ROWS */
+.section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); font-weight: 500; padding: 0 20px; margin-bottom: 10px; }
+.deck-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+.deck-item { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r-lg); padding: 14px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.deck-item:active { background: var(--bg3); }
+.deck-item.sel { border-color: var(--red); background: var(--red-bg); }
+.deck-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.deck-name-text { font-size: 15px; font-weight: 500; flex: 1; }
+.deck-badges { display: flex; gap: 6px; flex-shrink: 0; }
+.badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; font-family: var(--mono); }
+.badge.due { background: var(--amber-bg); color: var(--amber); }
+.badge.tot { background: var(--bg4); color: var(--text2); }
+.badge.ok { background: var(--green-bg); color: var(--green); }
+
+/* BIG STUDY BTN */
+.study-cta { padding: 0 20px 20px; }
+.study-btn { width: 100%; padding: 16px; border-radius: var(--r-lg); border: none; background: var(--red); color: #fff; font-family: var(--sans); font-size: 16px; font-weight: 600; cursor: pointer; letter-spacing: 0.2px; transition: opacity 0.15s, transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.study-btn:active { transform: scale(0.98); opacity: 0.9; }
+.study-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* STUDY SCREEN */
+#screen-study { padding-bottom: 0; }
+.study-header { padding: calc(var(--safe-top) + 16px) 20px 0; display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.back-btn { background: var(--bg3); border: none; color: var(--text); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; flex-shrink: 0; transition: background 0.15s; }
+.back-btn:active { background: var(--bg4); }
+.prog-wrap { flex: 1; height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; }
+.prog-fill { height: 100%; background: var(--red); border-radius: 2px; transition: width 0.35s ease; }
+.study-counter { font-family: var(--mono); font-size: 12px; color: var(--text3); flex-shrink: 0; }
+
+.flashcard-area { padding: 0 20px; min-height: calc(100dvh - 64px - var(--safe-bot) - 200px); display: flex; flex-direction: column; }
+.flashcard {
+  background: var(--bg2); border: 0.5px solid var(--border2); border-radius: var(--r-lg);
+  flex: 1; min-height: 280px; display: flex; flex-direction: column;
+  cursor: pointer; position: relative; overflow: hidden; margin-bottom: 12px;
+  transition: border-color 0.2s;
+}
+.flashcard:active { border-color: var(--border2); }
+.card-deck-tag { position: absolute; top: 14px; left: 16px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); }
+.card-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 24px 24px; text-align: center; }
+.card-q-text { font-family: var(--serif); font-size: 22px; line-height: 1.4; color: var(--text); }
+.card-flip-hint { position: absolute; bottom: 14px; right: 16px; font-size: 11px; color: var(--text3); letter-spacing: 0.2px; }
+.card-answer-wrap { width: 100%; }
+.card-divider { height: 0.5px; background: var(--border); margin: 14px 0; }
+.card-q-small { font-size: 12px; color: var(--text3); margin-bottom: 2px; }
+.card-ans-text { font-size: 16px; line-height: 1.6; color: var(--text); font-weight: 400; }
+
+.rating-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0 20px; margin-bottom: 12px; }
+.rate-btn { padding: 12px 4px; border-radius: var(--r); border: 0.5px solid var(--border2); background: var(--bg2); cursor: pointer; font-family: var(--sans); display: flex; flex-direction: column; align-items: center; gap: 3px; transition: all 0.12s; }
+.rate-btn:active { transform: scale(0.96); }
+.rate-name { font-size: 13px; font-weight: 600; }
+.rate-days { font-size: 10px; font-family: var(--mono); }
+.rate-btn.again { border-color: rgba(201,55,44,0.4); }
+.rate-btn.again .rate-name { color: var(--red-light); }
+.rate-btn.again .rate-days { color: var(--text3); }
+.rate-btn.again:active { background: var(--red-bg); }
+.rate-btn.hard { border-color: rgba(217,124,26,0.4); }
+.rate-btn.hard .rate-name { color: var(--amber); }
+.rate-btn.hard:active { background: var(--amber-bg); }
+.rate-btn.good { border-color: rgba(45,155,90,0.4); }
+.rate-btn.good .rate-name { color: var(--green); }
+.rate-btn.good:active { background: var(--green-bg); }
+.rate-btn.easy { border-color: rgba(46,114,194,0.4); }
+.rate-btn.easy .rate-name { color: #5b9de0; }
+.rate-btn.easy:active { background: var(--blue-bg); }
+
+/* CONGRATS */
+.congrats { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100dvh - 130px); padding: 40px 24px; text-align: center; }
+.congrats-emoji { font-size: 64px; margin-bottom: 20px; }
+.congrats-title { font-family: var(--serif); font-size: 28px; margin-bottom: 10px; }
+.congrats-sub { font-size: 14px; color: var(--text2); margin-bottom: 32px; line-height: 1.6; }
+.congrats-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; width: 100%; margin-bottom: 32px; }
+.cstat { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r); padding: 12px 8px; }
+.cstat-n { font-family: var(--mono); font-size: 22px; font-weight: 500; }
+.cstat-l { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+/* STATS SCREEN */
+.chart-wrap { padding: 0 20px; margin-bottom: 20px; }
+.chart-title { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; font-weight: 500; }
+.bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 120px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+.bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.5s ease; }
+.bar-day { font-size: 9px; color: var(--text3); font-family: var(--mono); }
+.heat-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.heat-cell { aspect-ratio: 1; border-radius: 3px; background: var(--bg4); }
+.deck-stat-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+.deck-stat-row:last-child { border-bottom: none; }
+.dsr-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dsr-name { font-size: 13px; flex: 1; }
+.dsr-bar-wrap { width: 80px; height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; }
+.dsr-bar { height: 100%; border-radius: 2px; }
+.dsr-count { font-family: var(--mono); font-size: 12px; color: var(--text2); min-width: 24px; text-align: right; }
+
+/* ADD SCREEN */
+.form-section { padding: 0 20px; margin-bottom: 20px; }
+.form-label { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.6px; font-weight: 500; margin-bottom: 8px; display: block; }
+textarea, select, input[type=text] {
+  width: 100%; background: var(--bg2); border: 0.5px solid var(--border2); border-radius: var(--r);
+  color: var(--text); font-family: var(--sans); font-size: 15px; padding: 12px 14px; outline: none;
+  -webkit-appearance: none; transition: border-color 0.15s;
+}
+textarea:focus, select:focus, input:focus { border-color: var(--red); }
+textarea { min-height: 90px; resize: none; line-height: 1.5; }
+select { appearance: none; -webkit-appearance: none; cursor: pointer; }
+.add-btn { width: 100%; padding: 15px; border-radius: var(--r-lg); border: none; background: var(--red); color: #fff; font-family: var(--sans); font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+.add-btn:active { opacity: 0.85; }
+.feedback-toast { position: fixed; bottom: calc(72px + var(--safe-bot)); left: 50%; transform: translateX(-50%) translateY(20px); background: var(--bg3); border: 0.5px solid var(--border2); color: var(--text); padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none; z-index: 200; white-space: nowrap; }
+.feedback-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.feedback-toast.err { color: var(--red-light); }
+
+/* IMPORT */
+.import-area { border: 1.5px dashed var(--border2); border-radius: var(--r-lg); padding: 32px 20px; text-align: center; cursor: pointer; transition: border-color 0.15s; background: var(--bg2); }
+.import-area:active { border-color: var(--red); }
+.import-icon { font-size: 32px; margin-bottom: 10px; }
+.import-title { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+.import-sub { font-size: 13px; color: var(--text2); }
+#file-input { display: none; }
+.import-preview { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r-lg); padding: 16px; margin-top: 14px; display: none; }
+.ip-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.ip-item { font-size: 12px; color: var(--text2); padding: 6px 0; border-bottom: 0.5px solid var(--border); line-height: 1.4; }
+.ip-item:last-child { border-bottom: none; }
+.ip-q { color: var(--text); font-weight: 500; }
+
+/* MANAGE LIST */
+.manage-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
+.manage-item { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r); padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px; }
+.mi-content { flex: 1; min-width: 0; }
+.mi-q { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+.mi-a { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mi-meta { display: flex; gap: 6px; margin-top: 6px; }
+.mi-tag { font-size: 10px; font-family: var(--mono); padding: 2px 7px; border-radius: 10px; background: var(--bg4); color: var(--text3); }
+.mi-del { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 18px; padding: 0; flex-shrink: 0; transition: color 0.15s; }
+.mi-del:active { color: var(--red-light); }
+
+/* filter chips */
+.chip-row { display: flex; gap: 6px; overflow-x: auto; padding: 0 20px; margin-bottom: 14px; scrollbar-width: none; }
+.chip-row::-webkit-scrollbar { display: none; }
+.chip { font-size: 12px; padding: 6px 12px; border-radius: 20px; border: 0.5px solid var(--border); background: var(--bg2); color: var(--text2); cursor: pointer; white-space: nowrap; transition: all 0.12s; font-weight: 500; flex-shrink: 0; }
+.chip.on { background: var(--red-bg); border-color: var(--red); color: var(--red-light); }
+
+.empty { text-align: center; padding: 60px 20px; color: var(--text3); font-size: 14px; line-height: 1.6; }
+
+/* ANIMATION */
+@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+.fade-in { animation: fadeUp 0.3s ease forwards; }
+@keyframes flipIn { from { opacity:0; transform:rotateX(-8deg) scale(0.97); } to { opacity:1; transform:rotateX(0) scale(1); } }
+.flip-in { animation: flipIn 0.2s ease forwards; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME SCREEN -->
+  <div id="screen-home" class="screen active">
+    <div class="page-header">
+      <div class="page-title">TUS Anki</div>
+      <div class="page-sub" id="home-date"></div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">Toplam Kart</div>
+        <div class="stat-num" id="s-total">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Bugün Bekliyor</div>
+        <div class="stat-num a" id="s-due">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Öğrenildi</div>
+        <div class="stat-num g" id="s-learned">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Seri 🔥</div>
+        <div class="stat-num r" id="s-streak">0</div>
+      </div>
+    </div>
+
+    <div class="section-label">Demetler</div>
+    <div class="deck-list" id="deck-list"></div>
+
+    <div class="study-cta">
+      <button class="study-btn" id="study-btn" onclick="startStudy()">
+        <span>Çalışmaya Başla</span>
+        <span id="study-btn-count"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- STUDY SCREEN -->
+  <div id="screen-study" class="screen">
+    <div class="study-header">
+      <button class="back-btn" onclick="exitStudy()">←</button>
+      <div class="prog-wrap"><div class="prog-fill" id="prog" style="width:0%"></div></div>
+      <div class="study-counter" id="s-counter">0/0</div>
+    </div>
+
+    <div class="flashcard-area">
+      <div class="flashcard" id="flashcard" onclick="flipCard()">
+        <div class="card-deck-tag" id="card-deck-tag"></div>
+        <div class="card-body" id="card-body">
+          <div class="card-q-text" id="card-q-text"></div>
+        </div>
+        <div class="card-flip-hint" id="flip-hint">dokunarak çevir</div>
+      </div>
+
+      <div class="rating-grid" id="rating-grid" style="display:none;">
+        <button class="rate-btn again" onclick="rate(0)">
+          <span class="rate-name">Tekrar</span>
+          <span class="rate-days">&lt;1dk</span>
+        </button>
+        <button class="rate-btn hard" onclick="rate(1)">
+          <span class="rate-name">Zor</span>
+          <span class="rate-days">+1g</span>
+        </button>
+        <button class="rate-btn good" onclick="rate(2)">
+          <span class="rate-name">İyi</span>
+          <span class="rate-days">+3g</span>
+        </button>
+        <button class="rate-btn easy" onclick="rate(3)">
+          <span class="rate-name">Kolay</span>
+          <span class="rate-days">+7g</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="congrats" id="congrats">
+      <div class="congrats-emoji">🎉</div>
+      <div class="congrats-title">Oturum tamamlandı!</div>
+      <div class="congrats-sub" id="congrats-sub">Harika iş çıkardın.</div>
+      <div class="congrats-stats">
+        <div class="cstat"><div class="cstat-n g" id="cs-correct">0</div><div class="cstat-l">Doğru</div></div>
+        <div class="cstat"><div class="cstat-n r" id="cs-again">0</div><div class="cstat-l">Tekrar</div></div>
+        <div class="cstat"><div class="cstat-n a" id="cs-acc">0%</div><div class="cstat-l">Doğruluk</div></div>
+      </div>
+      <button class="study-btn" onclick="exitStudy()" style="max-width:280px;">Ana Sayfaya Dön</button>
+    </div>
+  </div>
+
+  <!-- STATS SCREEN -->
+  <div id="screen-stats" class="screen">
+    <div class="page-header">
+      <div class="page-title">İstatistik</div>
+      <div class="page-sub">Çalışma geçmişin</div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">Son 7 Gün — Çalışılan Kart</div>
+      <div class="bar-chart" id="bar-chart"></div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">Aktivite Haritası (Son 49 Gün)</div>
+      <div class="heat-grid" id="heat-grid"></div>
+    </div>
+
+    <div style="padding:0 20px; margin-bottom:20px;">
+      <div class="chart-title">Konu Dağılımı</div>
+      <div class="card" id="deck-stat-list"></div>
+    </div>
+
+    <div class="stats-grid" style="margin-bottom:20px;">
+      <div class="stat-box">
+        <div class="stat-label">Toplam Oturum</div>
+        <div class="stat-num" id="ts-sessions">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Toplam Çalışma</div>
+        <div class="stat-num" id="ts-studied">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Ort. Doğruluk</div>
+        <div class="stat-num g" id="ts-acc">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">En Uzun Seri</div>
+        <div class="stat-num r" id="ts-best">0🔥</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD SCREEN -->
+  <div id="screen-add" class="screen">
+    <div class="page-header">
+      <div class="page-title">Kart Ekle</div>
+    </div>
+
+    <!-- TABS -->
+    <div class="chip-row" style="margin-bottom:20px;">
+      <div class="chip on" onclick="switchAddTab('manual')" id="tab-manual">Elle Ekle</div>
+      <div class="chip" onclick="switchAddTab('import')" id="tab-import">JSON Import</div>
+      <div class="chip" onclick="switchAddTab('manage')" id="tab-manage">Kartları Yönet</div>
+    </div>
+
+    <!-- MANUAL ADD -->
+    <div id="add-manual">
+      <div class="form-section">
+        <label class="form-label">Konu / Demet</label>
+        <select id="add-deck">
+          <option>Kardiyoloji</option><option>Dahiliye</option><option>Farmakoloji</option>
+          <option>Fizyoloji</option><option>Biyokimya</option><option>Patoloji</option>
+          <option>Nöroloji</option><option>Çocuk Sağlığı</option><option>Genel Cerrahi</option>
+          <option>Psikiyatri</option><option>Diğer</option>
+        </select>
+      </div>
+      <div class="form-section">
+        <label class="form-label">Soru (Ön Yüz)</label>
+        <textarea id="add-q" placeholder="Örn: STEMI'de delta dalgası ne anlama gelir?"></textarea>
+      </div>
+      <div class="form-section">
+        <label class="form-label">Cevap (Arka Yüz)</label>
+        <textarea id="add-a" placeholder="Cevabı detaylı yaz..."></textarea>
+      </div>
+      <div class="form-section">
+        <button class="add-btn" onclick="addCard()">Kartı Ekle</button>
+      </div>
+
+      <div style="padding:0 20px; margin-bottom:8px;">
+        <div class="chart-title">Örnek Hazır Kartlar</div>
+      </div>
+      <div class="chip-row" id="preset-filter-row"></div>
+      <div class="manage-list" id="preset-list" style="margin-bottom:20px;"></div>
+    </div>
+
+    <!-- JSON IMPORT -->
+    <div id="add-import" style="display:none;">
+      <div class="form-section">
+        <div class="import-area" onclick="document.getElementById('file-input').click()">
+          <div class="import-icon">📥</div>
+          <div class="import-title">JSON Dosyası Yükle</div>
+          <div class="import-sub">TUS soru bankası formatı desteklenir<br>Dokunarak dosya seç</div>
+        </div>
+        <input type="file" id="file-input" accept=".json" onchange="handleImport(this)">
+        <div class="import-preview" id="import-preview">
+          <div class="ip-title" id="ip-title"></div>
+          <div id="ip-items"></div>
+          <button class="add-btn" style="margin-top:14px;" onclick="confirmImport()">Tümünü İçe Aktar</button>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="chart-title" style="margin-bottom:10px;">JSON Format Örneği</div>
+        <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;overflow-x:auto;">
+          <pre style="font-family:var(--mono);font-size:11px;color:var(--text2);white-space:pre;line-height:1.6;">[
+  {
+    "deck": "Kardiyoloji",
+    "q": "Soru metni?",
+    "a": "Cevap metni."
+  },
+  {
+    "deck": "Farmakoloji",
+    "q": "İkinci soru?",
+    "a": "İkinci cevap."
+  }
+]</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- MANAGE -->
+    <div id="add-manage" style="display:none;">
+      <div class="chip-row" id="manage-filter-chips"></div>
+      <div class="manage-list" id="manage-list"></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav>
+    <button class="nav-btn active" onclick="goTo('home')" id="nav-home">
+      <span class="nav-icon">⊞</span>
+      <span class="nav-label">Ana Sayfa</span>
+    </button>
+    <button class="nav-btn" onclick="goTo('stats')" id="nav-stats">
+      <span class="nav-icon">◈</span>
+      <span class="nav-label">İstatistik</span>
+    </button>
+    <button class="nav-btn" onclick="goTo('add')" id="nav-add">
+      <span class="nav-icon">⊕</span>
+      <span class="nav-label">Ekle</span>
+    </button>
+  </nav>
+
+  <div class="feedback-toast" id="toast"></div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────
+const DECK_COLORS = {
+  Kardiyoloji:'#c9372c', Dahiliye:'#2e72c2', Farmakoloji:'#2d9b5a',
+  Fizyoloji:'#d97c1a', Biyokimya:'#7f6fd4', Patoloji:'#b84a4a',
+  Nöroloji:'#1d9e75', 'Çocuk Sağlığı':'#c05080', 'Genel Cerrahi':'#6a6a6a',
+  Psikiyatri:'#4080b0', Diğer:'#7a7870'
+};
+
+const PRESETS = [
+  {deck:'Kardiyoloji',q:'STEMI yönetiminde ilk 10 dakika hedefi nedir?',a:'12 derivasyonlu EKG çek (<10dk), aspirin 300mg çiğnet, IV erişim aç, primer PCI planla. "Door-to-balloon" <90 dakika hedeflenir. PCI yoksa fibrinoliz <12. saatte uygulanır.'},
+  {deck:'Kardiyoloji',q:'WPW sendromunda AF\'de KONTRENDİKE olan ilaçlar hangileridir?',a:'Digoksin, verapamil ve diltiazem KONTRENDİKE. AV düğüm blokajı aksesuar yolu (Kent demeti) hızlandırarak VF\'ye neden olabilir. Amiodaron veya DC kardiyoversiyon tercih edilir.'},
+  {deck:'Kardiyoloji',q:'HOCM\'da hangi manevralar üfürümü artırır/azaltır?',a:'ARTTIRIR: Valsalva (faz 2-3), ayağa kalkma → preload azalır, obstrüksiyon artar. AZALTIR: Çömelme, bacak kaldırma, El sıkışı → preload/afterload artar.'},
+  {deck:'Kardiyoloji',q:'Aort stenozu semptomlarının ortalama hayatta kalma süreleri?',a:'Angina → ~5 yıl. Senkop → ~3 yıl. Kalp yetmezliği → ~2 yıl. Semptom başlar başlamaz kapak replasmanı endikasyonu doğar.'},
+  {deck:'Kardiyoloji',q:'EKG\'de delta dalgası nedir?',a:'QRS başlangıcındaki yavaş, kaba çıkış eğimi. Kısa PR aralığıyla birlikte WPW işareti. Aksesuar yoldan (Kent demeti) erken ventriküler aktivasyon sonucu oluşur.'},
+  {deck:'Farmakoloji',q:'İvabradinin etki mekanizması nedir?',a:'Sinüs düğümündeki HCN (If) kanallarını selektif bloke eder. Kalp hızını azaltır, miyokard kontraktilitesi ve kan basıncı DEĞİŞMEZ. KY + sinüs taşikardisinde kullanılır.'},
+  {deck:'Farmakoloji',q:'Digoksin toksisitesi tedavisi?',a:'1. Digoksin-özgül Fab antikorları (DigiFab). 2. Hipokalemi varsa düzelt (K⁺ verme). 3. Atropine yanıtsız bradikardide geçici pace. KALSİYUM VERİLMEZ (kontraktiliteyi paradoksal artırır).'},
+  {deck:'Dahiliye',q:'Cushing hastalığı ile Cushing sendromu arasındaki fark?',a:'Cushing HASTALIĞI: hipofiz ACTH salgılayan adenom (tüm nedenlerin %70\'i). Cushing SENDROMU: tüm nedenler — eksojen steroid (en sık), adrenal tümör, ektopik ACTH.'},
+  {deck:'Fizyoloji',q:'Frank-Starling yasası nedir?',a:'Kalp kası, uzadıkça daha fazla kasılır. EDV artar → aktin-miyozin overlap optimize → atım hacmi artar. Patolojik dilatasyon bu mekanizmayı aşınca KY gelişir.'},
+  {deck:'Biyokimya',q:'Üre siklusunun gerçekleştiği organeller?',a:'İlk 2 basamak mitokondride (CPS-I ve OTC), geri kalanı sitozolde gerçekleşir. Karaciğer ağırlıklı. Aminoasit artığı azotu zararsız hale getirir.'},
+];
+
+let cards = JSON.parse(localStorage.getItem('ta_cards') || '[]');
+let history = JSON.parse(localStorage.getItem('ta_history') || '{}');
+let streak = parseInt(localStorage.getItem('ta_streak') || '0');
+let bestStreak = parseInt(localStorage.getItem('ta_best') || '0');
+let lastStudied = localStorage.getItem('ta_last') || '';
+let totalSessions = parseInt(localStorage.getItem('ta_sessions') || '0');
+let pendingImport = [];
+
+let studyQ = [], studyIdx = 0, flipped = false;
+let sCorrect = 0, sAgain = 0, sTotal = 0;
+let currentDeck = null;
+
+// ─── PERSISTENCE ─────────────────────────────────────────
+function save() {
+  localStorage.setItem('ta_cards', JSON.stringify(cards));
+  localStorage.setItem('ta_history', JSON.stringify(history));
+  localStorage.setItem('ta_streak', streak);
+  localStorage.setItem('ta_best', bestStreak);
+  localStorage.setItem('ta_last', lastStudied);
+  localStorage.setItem('ta_sessions', totalSessions);
+}
+
+// ─── DATE UTILS ──────────────────────────────────────────
+function today() { return new Date().toISOString().slice(0,10); }
+function daysAgo(n) {
+  const d = new Date(); d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0,10);
+}
+function dueCards(deck) {
+  const t = today();
+  return cards.filter(c => (!deck || c.deck === deck) && (!c.nextDue || c.nextDue <= t));
+}
+function fmtDate(d) {
+  const days = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
+  const months = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+  const dt = new Date(d + 'T00:00:00');
+  return `${days[dt.getDay()]}, ${dt.getDate()} ${months[dt.getMonth()]}`;
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────
+function goTo(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.getElementById('nav-' + name)?.classList.add('active');
+  if (name === 'home') renderHome();
+  if (name === 'stats') renderStats();
+  if (name === 'add') { switchAddTab('manual'); renderPresets(); }
+}
+
+// ─── HOME ────────────────────────────────────────────────
+function renderHome() {
+  document.getElementById('home-date').textContent = fmtDate(today());
+  document.getElementById('s-total').textContent = cards.length;
+  document.getElementById('s-due').textContent = dueCards(null).length;
+  document.getElementById('s-learned').textContent = cards.filter(c => c.interval >= 7).length;
+  document.getElementById('s-streak').textContent = streak;
+
+  const dl = document.getElementById('deck-list');
+  dl.innerHTML = '';
+  const deckNames = [...new Set(cards.map(c => c.deck))];
+  if (!deckNames.length) {
+    dl.innerHTML = '<div class="empty">Henüz kart yok.<br>Ekle sekmesinden başla!</div>';
+  }
+  deckNames.forEach(name => {
+    const tot = cards.filter(c => c.deck === name).length;
+    const due = dueCards(name).length;
+    const lrn = cards.filter(c => c.deck === name && c.interval >= 7).length;
+    const el = document.createElement('div');
+    el.className = 'deck-item' + (currentDeck === name ? ' sel' : '');
+    el.innerHTML = `<div class="deck-dot" style="background:${DECK_COLORS[name]||'#888'}"></div>
+      <span class="deck-name-text">${name}</span>
+      <div class="deck-badges">
+        ${due ? `<span class="badge due">${due}</span>` : ''}
+        ${lrn ? `<span class="badge ok">${lrn}✓</span>` : ''}
+        <span class="badge tot">${tot}</span>
+      </div>`;
+    el.onclick = () => { currentDeck = (currentDeck === name ? null : name); renderHome(); };
+    dl.appendChild(el);
+  });
+
+  const due = dueCards(currentDeck).length;
+  const btn = document.getElementById('study-btn');
+  btn.disabled = due === 0;
+  document.getElementById('study-btn-count').textContent = due ? `(${due})` : '';
+}
+
+// ─── STUDY ───────────────────────────────────────────────
+function startStudy() {
+  studyQ = dueCards(currentDeck).sort(() => Math.random() - 0.5);
+  if (!studyQ.length) return;
+  studyIdx = 0; sCorrect = 0; sAgain = 0; sTotal = 0; flipped = false;
+  document.getElementById('screen-home').classList.remove('active');
+  document.getElementById('screen-study').classList.add('active');
+  document.getElementById('congrats').style.display = 'none';
+  document.getElementById('flashcard').style.display = 'flex';
+  document.getElementById('rating-grid').style.display = 'none';
+  showCard();
+}
+
+function showCard() {
+  if (studyIdx >= studyQ.length) { showCongrats(); return; }
+  const c = studyQ[studyIdx];
+  flipped = false;
+  document.getElementById('card-deck-tag').textContent = c.deck;
+  document.getElementById('card-body').innerHTML = `<div class="card-q-text flip-in">${c.q}</div>`;
+  document.getElementById('flip-hint').style.display = 'block';
+  document.getElementById('rating-grid').style.display = 'none';
+  const pct = Math.round((studyIdx / studyQ.length) * 100);
+  document.getElementById('prog').style.width = pct + '%';
+  document.getElementById('s-counter').textContent = `${studyIdx+1}/${studyQ.length}`;
+}
+
+function flipCard() {
+  if (flipped) return;
+  flipped = true;
+  const c = studyQ[studyIdx];
+  document.getElementById('card-body').innerHTML = `
+    <div class="card-answer-wrap flip-in">
+      <div class="card-q-small">${c.q}</div>
+      <div class="card-divider"></div>
+      <div class="card-ans-text">${c.a}</div>
+    </div>`;
+  document.getElementById('flip-hint').style.display = 'none';
+  document.getElementById('rating-grid').style.display = 'grid';
+}
+
+function rate(score) {
+  const c = studyQ[studyIdx];
+  const idx = cards.findIndex(x => x.id === c.id);
+  sTotal++;
+  if (score >= 2) sCorrect++; else sAgain++;
+
+  const intervals = [0, 1, 3, 7];
+  if (score === 0) {
+    cards[idx].interval = 0;
+    cards[idx].nextDue = today();
+    studyQ.push(JSON.parse(JSON.stringify(c)));
+  } else {
+    const bump = intervals[score];
+    const cur = cards[idx].interval || 0;
+    cards[idx].interval = score >= 3 ? Math.max(bump, cur * 2) : Math.max(bump, cur + bump);
+    const d = new Date(); d.setDate(d.getDate() + cards[idx].interval);
+    cards[idx].nextDue = d.toISOString().slice(0,10);
+  }
+
+  // record history
+  const t = today();
+  history[t] = (history[t] || 0) + 1;
+  save();
+  studyIdx++;
+  showCard();
+}
+
+function showCongrats() {
+  document.getElementById('flashcard').style.display = 'none';
+  document.getElementById('rating-grid').style.display = 'none';
+  document.getElementById('congrats').style.display = 'flex';
+  document.getElementById('prog').style.width = '100%';
+
+  const acc = sTotal ? Math.round((sCorrect / sTotal) * 100) : 100;
+  document.getElementById('cs-correct').textContent = sCorrect;
+  document.getElementById('cs-again').textContent = sAgain;
+  document.getElementById('cs-acc').textContent = acc + '%';
+  document.getElementById('congrats-sub').textContent =
+    `${sTotal} kart çalışıldı · %${acc} doğruluk`;
+
+  totalSessions++;
+  const t = today();
+  const yesterday = daysAgo(1);
+  if (lastStudied === yesterday) { streak++; }
+  else if (lastStudied !== t) { streak = 1; }
+  if (streak > bestStreak) bestStreak = streak;
+  lastStudied = t;
+  save();
+}
+
+function exitStudy() {
+  document.getElementById('screen-study').classList.remove('active');
+  document.getElementById('screen-home').classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('nav-home').classList.add('active');
+  renderHome();
+}
+
+// ─── STATS ───────────────────────────────────────────────
+function renderStats() {
+  // bar chart last 7 days
+  const bc = document.getElementById('bar-chart');
+  bc.innerHTML = '';
+  const days = Array.from({length:7}, (_,i) => daysAgo(6-i));
+  const maxV = Math.max(...days.map(d => history[d]||0), 1);
+  const dayLabels = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+  days.forEach((d, i) => {
+    const v = history[d] || 0;
+    const pct = Math.round((v / maxV) * 100);
+    const dt = new Date(d + 'T00:00:00');
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    col.innerHTML = `<div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-bottom:2px;">${v||''}</div>
+      <div class="bar" style="height:${pct}%;background:${v?'var(--red-light)':'var(--bg4)'};"></div>
+      <div class="bar-day">${dayLabels[dt.getDay()]}</div>`;
+    bc.appendChild(col);
+  });
+
+  // heat grid 49 days
+  const hg = document.getElementById('heat-grid');
+  hg.innerHTML = '';
+  const hDays = Array.from({length:49}, (_,i) => daysAgo(48-i));
+  const maxH = Math.max(...hDays.map(d => history[d]||0), 1);
+  hDays.forEach(d => {
+    const v = history[d] || 0;
+    const alpha = v ? Math.max(0.2, v/maxH) : 0;
+    const cell = document.createElement('div');
+    cell.className = 'heat-cell';
+    if (v) cell.style.background = `rgba(201,55,44,${alpha})`;
+    cell.title = `${d}: ${v} kart`;
+    hg.appendChild(cell);
+  });
+
+  // deck stats
+  const dsl = document.getElementById('deck-stat-list');
+  const deckNames = [...new Set(cards.map(c => c.deck))];
+  const maxDeck = Math.max(...deckNames.map(n => cards.filter(c=>c.deck===n).length), 1);
+  dsl.innerHTML = deckNames.length ? deckNames.map(name => {
+    const tot = cards.filter(c => c.deck === name).length;
+    const pct = Math.round((tot/maxDeck)*100);
+    return `<div class="deck-stat-row">
+      <div class="dsr-dot" style="background:${DECK_COLORS[name]||'#888'}"></div>
+      <div class="dsr-name">${name}</div>
+      <div class="dsr-bar-wrap"><div class="dsr-bar" style="width:${pct}%;background:${DECK_COLORS[name]||'#888'}"></div></div>
+      <div class="dsr-count">${tot}</div>
+    </div>`;
+  }).join('') : '<div class="empty">Henüz kart yok.</div>';
+
+  // overall stats
+  const allStudied = Object.values(history).reduce((a,b) => a+b, 0);
+  const sessAcc = totalSessions ? Math.round((cards.filter(c=>c.interval>=3).length / Math.max(cards.length,1))*100) : null;
+  document.getElementById('ts-sessions').textContent = totalSessions;
+  document.getElementById('ts-studied').textContent = allStudied;
+  document.getElementById('ts-acc').textContent = sessAcc !== null ? '%'+sessAcc : '—';
+  document.getElementById('ts-best').textContent = bestStreak + '🔥';
+}
+
+// ─── ADD ─────────────────────────────────────────────────
+function addCard() {
+  const q = document.getElementById('add-q').value.trim();
+  const a = document.getElementById('add-a').value.trim();
+  const deck = document.getElementById('add-deck').value;
+  if (!q || !a) { showToast('Soru ve cevap gir!', true); return; }
+  cards.push({ id: Date.now(), deck, q, a, interval: 0, nextDue: today() });
+  save();
+  document.getElementById('add-q').value = '';
+  document.getElementById('add-a').value = '';
+  showToast('Kart eklendi ✓');
+}
+
+function switchAddTab(tab) {
+  ['manual','import','manage'].forEach(t => {
+    document.getElementById('add-'+t).style.display = t===tab ? 'block' : 'none';
+    document.getElementById('tab-'+t)?.classList.toggle('on', t===tab);
+  });
+  if (tab === 'manage') renderManage();
+}
+
+// ─── PRESETS ─────────────────────────────────────────────
+let presetFilter = null;
+function renderPresets() {
+  const decks = [...new Set(PRESETS.map(p => p.deck))];
+  document.getElementById('preset-filter-row').innerHTML =
+    decks.map(d => `<div class="chip${presetFilter===d?' on':''}" onclick="setPresetFilter('${d}')">${d}</div>`).join('');
+  const visible = presetFilter ? PRESETS.filter(p => p.deck === presetFilter) : PRESETS;
+  document.getElementById('preset-list').innerHTML = visible.map((p,i) => {
+    const ri = PRESETS.indexOf(p);
+    const has = cards.some(c => c.q === p.q);
+    return `<div class="manage-item">
+      <div class="mi-content">
+        <div class="mi-q">${p.q}</div>
+        <div class="mi-a">${p.a.slice(0,70)}…</div>
+        <div class="mi-meta"><span class="mi-tag">${p.deck}</span></div>
+      </div>
+      ${has ? `<span style="font-size:11px;color:var(--text3);">✓</span>`
+             : `<button onclick="addPreset(${ri})" style="background:var(--bg4);border:0.5px solid var(--border2);color:var(--text2);padding:6px 10px;border-radius:8px;font-family:var(--sans);font-size:12px;cursor:pointer;">+</button>`}
+    </div>`;
+  }).join('') || '<div class="empty">Kart yok.</div>';
+}
+function setPresetFilter(d) { presetFilter = presetFilter===d?null:d; renderPresets(); }
+function addPreset(i) {
+  const p = PRESETS[i];
+  if (cards.some(c => c.q === p.q)) { showToast('Bu kart zaten eklendi.'); return; }
+  cards.push({ id: Date.now()+i, deck: p.deck, q: p.q, a: p.a, interval: 0, nextDue: today() });
+  save();
+  showToast(`"${p.deck}" kartı eklendi ✓`);
+  renderPresets();
+}
+
+// ─── IMPORT ──────────────────────────────────────────────
+function handleImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      let data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) data = [data];
+      const valid = data.filter(x => x.q && x.a);
+      if (!valid.length) { showToast('Geçerli kart bulunamadı.', true); return; }
+      pendingImport = valid.map(x => ({ ...x, deck: x.deck || 'Diğer' }));
+      document.getElementById('ip-title').textContent = `${pendingImport.length} kart hazır`;
+      document.getElementById('ip-items').innerHTML = pendingImport.slice(0,5).map(c =>
+        `<div class="ip-item"><span class="ip-q">${c.q}</span><br>${c.a.slice(0,60)}…</div>`
+      ).join('') + (pendingImport.length>5 ? `<div class="ip-item">+${pendingImport.length-5} kart daha</div>` : '');
+      document.getElementById('import-preview').style.display = 'block';
+    } catch { showToast('JSON formatı geçersiz.', true); }
+  };
+  reader.readAsText(file);
+}
+
+function confirmImport() {
+  let added = 0;
+  pendingImport.forEach((p, i) => {
+    cards.push({ id: Date.now()+i, deck: p.deck, q: p.q, a: p.a, interval: 0, nextDue: today() });
+    added++;
+  });
+  save();
+  pendingImport = [];
+  document.getElementById('import-preview').style.display = 'none';
+  document.getElementById('file-input').value = '';
+  showToast(`${added} kart içe aktarıldı ✓`);
+}
+
+// ─── MANAGE ──────────────────────────────────────────────
+let manageFilter = null;
+function renderManage() {
+  const decks = [...new Set(cards.map(c => c.deck))];
+  document.getElementById('manage-filter-chips').innerHTML =
+    ['Tümü', ...decks].map(d =>
+      `<div class="chip${(d==='Tümü'&&!manageFilter)||(d===manageFilter)?' on':''}" onclick="setManageFilter(${d==='Tümü'?'null':`'${d}'`})">${d}</div>`
+    ).join('');
+  const visible = manageFilter ? cards.filter(c=>c.deck===manageFilter) : cards;
+  document.getElementById('manage-list').innerHTML = visible.length
+    ? visible.map(c => `<div class="manage-item">
+        <div class="mi-content">
+          <div class="mi-q">${c.q}</div>
+          <div class="mi-a">${c.a.slice(0,70)}</div>
+          <div class="mi-meta">
+            <span class="mi-tag">${c.deck}</span>
+            <span class="mi-tag">${c.interval?c.interval+'g':'Yeni'}</span>
+            <span class="mi-tag">${c.nextDue||'—'}</span>
+          </div>
+        </div>
+        <button class="mi-del" onclick="deleteCard(${c.id})">×</button>
+      </div>`).join('')
+    : '<div class="empty">Kart yok.</div>';
+}
+function setManageFilter(d) { manageFilter = d; renderManage(); }
+function deleteCard(id) {
+  cards = cards.filter(c => c.id !== id);
+  save();
+  renderManage();
+  showToast('Kart silindi.');
+}
+
+// ─── TOAST ───────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'feedback-toast show' + (err ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ─── PWA ─────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+// ─── INIT ────────────────────────────────────────────────
+renderHome();
+</script>
+</body>
+</html>
